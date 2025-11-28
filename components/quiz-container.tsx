@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
@@ -12,15 +12,32 @@ interface QuizContainerProps {
 }
 
 export default function QuizContainer({ questions, onComplete }: QuizContainerProps) {
+
+  // 🔥 Shuffle the questions ONCE when the quiz loads
+  const shuffledQuestions = useMemo(() => {
+    const arr = [...questions]
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1))
+      ;[arr[i], arr[j]] = [arr[j], arr[i]]
+    }
+    return arr
+  }, [])
+
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
   const [userAnswers, setUserAnswers] = useState<number[]>([])
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null)
   const [isAnswered, setIsAnswered] = useState(false)
   const [animateQuestion, setAnimateQuestion] = useState(true)
 
-  const currentQuestion = questions[currentQuestionIndex]
-  const progress = ((currentQuestionIndex + 1) / questions.length) * 100
-  const correctAnswers = userAnswers.filter((ans, idx) => ans === questions[idx].answer_index).length
+  // Use shuffled questions everywhere
+  const currentQuestion = shuffledQuestions[currentQuestionIndex]
+
+  const progress =
+    ((currentQuestionIndex + 1) / shuffledQuestions.length) * 100
+
+  const correctAnswers = userAnswers.filter(
+    (ans, idx) => ans === shuffledQuestions[idx].answer_index
+  ).length
 
   const handleSelectAnswer = (index: number) => {
     if (!isAnswered) {
@@ -33,7 +50,7 @@ export default function QuizContainer({ questions, onComplete }: QuizContainerPr
     const newAnswers = [...userAnswers, selectedAnswer!]
     setUserAnswers(newAnswers)
 
-    if (currentQuestionIndex < questions.length - 1) {
+    if (currentQuestionIndex < shuffledQuestions.length - 1) {
       setAnimateQuestion(false)
       setTimeout(() => {
         setCurrentQuestionIndex(currentQuestionIndex + 1)
@@ -42,7 +59,9 @@ export default function QuizContainer({ questions, onComplete }: QuizContainerPr
         setAnimateQuestion(true)
       }, 300)
     } else {
-      const score = newAnswers.filter((ans, idx) => ans === questions[idx].answer_index).length
+      const score = newAnswers.filter(
+        (ans, idx) => ans === shuffledQuestions[idx].answer_index
+      ).length
       onComplete(newAnswers, score)
     }
   }
@@ -51,7 +70,7 @@ export default function QuizContainer({ questions, onComplete }: QuizContainerPr
     const newAnswers = [...userAnswers, -1]
     setUserAnswers(newAnswers)
 
-    if (currentQuestionIndex < questions.length - 1) {
+    if (currentQuestionIndex < shuffledQuestions.length - 1) {
       setAnimateQuestion(false)
       setTimeout(() => {
         setCurrentQuestionIndex(currentQuestionIndex + 1)
@@ -60,7 +79,9 @@ export default function QuizContainer({ questions, onComplete }: QuizContainerPr
         setAnimateQuestion(true)
       }, 300)
     } else {
-      const score = newAnswers.filter((ans, idx) => ans === questions[idx].answer_index).length
+      const score = newAnswers.filter(
+        (ans, idx) => ans === shuffledQuestions[idx].answer_index
+      ).length
       onComplete(newAnswers, score)
     }
   }
@@ -68,6 +89,7 @@ export default function QuizContainer({ questions, onComplete }: QuizContainerPr
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-4 py-8">
       <div className="w-full max-w-2xl space-y-6">
+
         {/* Header Stats */}
         <div className="grid grid-cols-3 gap-4 mb-8">
           <Card className="bg-card/50 backdrop-blur-sm border-border">
@@ -91,7 +113,7 @@ export default function QuizContainer({ questions, onComplete }: QuizContainerPr
           <Card className="bg-card/50 backdrop-blur-sm border-border">
             <CardContent className="pt-4">
               <div className="text-center">
-                <div className="text-2xl font-bold text-secondary">{questions.length}</div>
+                <div className="text-2xl font-bold text-secondary">{shuffledQuestions.length}</div>
                 <div className="text-xs text-foreground/60 mt-1">Total</div>
               </div>
             </CardContent>
@@ -101,15 +123,16 @@ export default function QuizContainer({ questions, onComplete }: QuizContainerPr
         {/* Progress Bar */}
         <div className="space-y-2">
           <Progress value={progress} className="h-2" />
-          <div className="text-xs text-foreground/60 text-center">{Math.round(progress)}% Complete</div>
+          <div className="text-xs text-foreground/60 text-center">
+            {Math.round(progress)}% Complete
+          </div>
         </div>
 
         {/* Question Card */}
-        <Card
-          className={`border-primary/30 bg-card/50 backdrop-blur-sm ${animateQuestion ? "animate-slide-in" : "animate-slide-out"}`}
-        >
+        <Card className={`border-primary/30 bg-card/50 backdrop-blur-sm ${animateQuestion ? "animate-slide-in" : "animate-slide-out"}`}>
           <CardContent className="pt-8">
             <div className="space-y-6">
+
               {/* Unit and Topic */}
               <div className="flex gap-2 flex-wrap">
                 <span className="inline-block bg-primary/15 text-primary px-3 py-1 rounded-full text-xs font-semibold">
@@ -120,12 +143,10 @@ export default function QuizContainer({ questions, onComplete }: QuizContainerPr
                 </span>
               </div>
 
-              {/* Question Text */}
-              <div>
-                <h2 className="text-xl md:text-2xl font-bold text-foreground leading-relaxed">
-                  {currentQuestion.question}
-                </h2>
-              </div>
+              {/* Question */}
+              <h2 className="text-xl md:text-2xl font-bold text-foreground leading-relaxed">
+                {currentQuestion.question}
+              </h2>
 
               {/* Options */}
               <div className="space-y-3 mt-8">
@@ -156,7 +177,8 @@ export default function QuizContainer({ questions, onComplete }: QuizContainerPr
                               : "border-border"
                         }`}
                       >
-                        {(selectedAnswer === index || (isAnswered && index === currentQuestion.answer_index)) && (
+                        {(selectedAnswer === index ||
+                          (isAnswered && index === currentQuestion.answer_index)) && (
                           <span className="text-white text-xs">✓</span>
                         )}
                       </div>
@@ -166,7 +188,7 @@ export default function QuizContainer({ questions, onComplete }: QuizContainerPr
                 ))}
               </div>
 
-              {/* Feedback */}
+              {/* Answer Feedback */}
               {isAnswered && (
                 <div
                   className={`p-4 rounded-lg text-sm font-medium animate-scale-in ${
@@ -184,7 +206,7 @@ export default function QuizContainer({ questions, onComplete }: QuizContainerPr
           </CardContent>
         </Card>
 
-        {/* Action Buttons */}
+        {/* Navigation Buttons */}
         <div className="flex gap-3 justify-center">
           {!isAnswered ? (
             <Button onClick={handleSkip} variant="outline" size="lg" className="min-w-32 bg-transparent">
@@ -192,7 +214,7 @@ export default function QuizContainer({ questions, onComplete }: QuizContainerPr
             </Button>
           ) : (
             <>
-              {currentQuestionIndex < questions.length - 1 && (
+              {currentQuestionIndex < shuffledQuestions.length - 1 && (
                 <Button
                   onClick={handleNext}
                   size="lg"
@@ -201,7 +223,7 @@ export default function QuizContainer({ questions, onComplete }: QuizContainerPr
                   Next Question
                 </Button>
               )}
-              {currentQuestionIndex === questions.length - 1 && (
+              {currentQuestionIndex === shuffledQuestions.length - 1 && (
                 <Button
                   onClick={handleNext}
                   size="lg"
@@ -213,6 +235,7 @@ export default function QuizContainer({ questions, onComplete }: QuizContainerPr
             </>
           )}
         </div>
+
       </div>
     </div>
   )
